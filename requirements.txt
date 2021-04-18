@@ -1,0 +1,6 @@
+click==7.1.2
+click_aliases==1.0.1
+colorama==0.4.4
+terminaltables==3.1.0
+PyYAML==5.4.1
+docker==5.0.0
