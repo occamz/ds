@@ -1,5 +1,7 @@
 # ds - docker snapshot utility
 
+Note: This repository is still a work in progress, still requires a bit of refactoring and testing.
+
 Install:
 ```bash
 python -m venv venv
