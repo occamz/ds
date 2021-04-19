@@ -89,7 +89,12 @@ def restore(name):
         snapshots = snapshot.snapshot_list()
         if len(snapshots):
             name = snapshots[-1].name
-            click.echo(click.style(f"No snapshot name given, restoring latest snapshot `{name}`", fg="green"))
+            click.echo(
+                click.style(
+                    f"No snapshot name given, restoring latest snapshot `{name}`",
+                    fg="green",
+                )
+            )
     else:
         click.echo(click.style(f"Restoring `{name}`", fg="green"))
 
