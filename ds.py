@@ -1,5 +1,4 @@
 import click
-import colorama
 from click_aliases import ClickAliasedGroup
 from terminaltables import AsciiTable
 
@@ -8,7 +7,6 @@ import settings
 import utils
 
 """
-
 Configuration parameters:
 - container_name: 		postgres					kind-control-plane
 - directory: 			/var/lib/postgresql/data	/mnt1/postgres-data
@@ -22,8 +20,12 @@ def error(message):
 
 def get_names(ctx, args, incomplete):
     snapshots = snapshot.snapshot_list()
-    names = list(map(lambda s: (s.name, s.created_when), snapshots))
-    return [name for name in names if name[0].startswith(incomplete)]
+    return list(
+        filter(
+            lambda name: name.name.startswith(incomplete),
+            map(lambda s: s.name, snapshots),
+        )
+    )
 
 
 @click.group(cls=ClickAliasedGroup)
