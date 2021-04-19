@@ -28,6 +28,7 @@ class Snapshot:
         return datetime.datetime.fromtimestamp(self.created)
 
 
+# Could be made lazy-loaded
 def load_database():
     json_string = container.file_read("db.json")
     if not json_string:
@@ -100,9 +101,8 @@ def snapshot_restore(name):
 
     snapshot = existing_snapshots[0]
 
-    container.pause(settings.get("container_name"))
+    container.stop(settings.get("container_name"))
 
-    container.directory_remove(settings.get("directory"))
     container.sync(f"/mnt/ds/{snapshot.uuid}", settings.get("directory"))
 
-    container.unpause(settings.get("container_name"))
+    container.start(settings.get("container_name"))

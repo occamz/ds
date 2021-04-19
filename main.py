@@ -8,11 +8,6 @@ import settings
 import utils
 
 """
-- Store snapshots in a named volume
-- Install rsync for showing progress
-- Add configuration file
-- Add "snapshots init" command to create template configuration file
-
 
 Configuration parameters:
 - container_name: 		postgres					kind-control-plane
@@ -22,7 +17,7 @@ Configuration parameters:
 
 
 def error(message):
-    click.echo(f"{colorama.Fore.RED}{message}", err=True)
+    click.echo(click.style(str(message), fg="red"), err=True)
 
 
 def get_names(ctx, args, incomplete):
@@ -65,30 +60,42 @@ def ls():
     click.echo(table.table)
 
 
-@cli.command(aliases=["c"])
+@cli.command()
 @click.argument("name", default="")
 def create(name):
     name = name if name else None
-    s = snapshot.snapshot_create(name)
-    click.echo(f"{colorama.Fore.GREEN}Created `{s.name}`")
-
-
-@cli.command(aliases=["d"])
-@click.argument("name", type=click.STRING, autocompletion=get_names)
-def delete(name):
     try:
-        snapshot.snapshot_delete(name)
-        click.echo(f"{colorama.Fore.RED}Deleted `{name}`")
+        s = snapshot.snapshot_create(name)
+        click.echo(click.style(f"Created `{s.name}`", fg="green"))
     except Exception as e:
         error(e)
 
 
-@cli.command(aliases=["r"])
+@cli.command(aliases=["d", "rm"])
 @click.argument("name", type=click.STRING, autocompletion=get_names)
+def delete(name):
+    try:
+        snapshot.snapshot_delete(name)
+        click.echo(click.style(f"Deleted `{name}`", fg="red"))
+    except Exception as e:
+        error(e)
+
+
+@cli.command()
+@click.argument("name", default="", type=click.STRING, autocompletion=get_names)
 def restore(name):
+    # Restore latest if no name is given
+    if not name:
+        snapshots = snapshot.snapshot_list()
+        if len(snapshots):
+            name = snapshots[-1].name
+            click.echo(click.style(f"No snapshot name given, restoring latest snapshot `{name}`", fg="green"))
+    else:
+        click.echo(click.style(f"Restoring `{name}`", fg="green"))
+
     try:
         snapshot.snapshot_restore(name)
-        click.echo(f"{colorama.Fore.GREEN}Restored `{name}`")
+        click.echo(click.style(f"Restored `{name}`", fg="green"))
     except Exception as e:
         error(e)
 
@@ -97,7 +104,7 @@ def restore(name):
 def init():
     try:
         settings.init()
-        click.echo(f"{colorama.Fore.GREEN}Created ds.yaml")
+        click.echo(click.style("Created ds.yaml", fg="green"))
     except Exception as e:
         error(e)
 

@@ -1,32 +1,47 @@
+import io
 import re
 import shlex
 import click
 import docker
+import importlib.resources as pkg_resources
 import settings
 from docker import errors
+import images
 
 
 client = docker.from_env()
-namespace = settings.get("namespace")
-ID_IMAGE = f"ds-{namespace}"
-ID_VOLUME = f"ds-{namespace}"
-ID_CONTAINER = f"ds-{namespace}"
 BASE_PATH = "/mnt/ds"
 
 
+def get_image_id():
+    namespace = settings.get("namespace")
+    return f"ds-{namespace}"
+
+
+def get_volume_id():
+    namespace = settings.get("namespace")
+    return f"ds-{namespace}"
+
+
+def get_container_id():
+    namespace = settings.get("namespace")
+    return f"ds-{namespace}"
+
+
 def build_image():
-    image, _ = client.images.build(path=".", tag=ID_IMAGE)
+    dockerfile = io.BytesIO(pkg_resources.read_text(images, "rsync").encode("utf-8"))
+    image, _ = client.images.build(fileobj=dockerfile, tag=get_image_id())
     return image
 
 
 def create_volume():
-    return client.volumes.create(name=ID_VOLUME)
+    return client.volumes.create(name=get_volume_id())
 
 
 def run_container(image, volume):
     container = client.containers.run(
         image,
-        name=ID_CONTAINER,
+        name=get_container_id(),
         volumes={volume.name: {"bind": BASE_PATH, "mode": "rw"}},
         volumes_from=[settings.get("container_name")],
         working_dir=BASE_PATH,
@@ -41,19 +56,19 @@ def init():
     # Get or build image
     try:
         # NOTE: Blocks future versions of Dockerfile
-        image = client.images.get(ID_IMAGE)
+        image = client.images.get(get_image_id())
     except errors.ImageNotFound:
         image = build_image()
 
     # Get or create volume
     try:
-        volume = client.volumes.get(ID_VOLUME)
+        volume = client.volumes.get(get_volume_id())
     except errors.NotFound:
         volume = create_volume()
 
     # Get and/or run container
     try:
-        container = client.containers.get(ID_CONTAINER)
+        container = client.containers.get(get_container_id())
     except errors.NotFound:
         container = run_container(image, volume)
 
@@ -94,35 +109,38 @@ def sync(source_directory, destination_path):
         [
             "sh",
             "-c",
-            f"rsync -a --info=progress2 {source_directory}/* {destination_path}",
+            f"rsync -aAHX --delete --info=progress2 {source_directory}/ {destination_path}",
         ],
         stream=True,
         stdout=True,
         stderr=True,
     )
-    with click.progressbar(length=100, label="Copying files", show_eta=False) as bar:
+    current_percentage = 0
+    with click.progressbar(length=100, label="Copying files", show_eta=True) as bar:
         for out in response.output:
             percentage_string = re.search(r"\d+%", out.decode("utf-8"))
             if percentage_string:
                 try:
                     percentage = int(percentage_string.group()[:-1])
-                    bar.update(percentage)
+                    if current_percentage < percentage:
+                        bar.update(percentage - current_percentage)
+                        current_percentage = percentage
                 except Exception as e:
                     pass
         bar.update(100)
 
 
-def pause(container_name):
+def stop(container_name):
     try:
         container = client.containers.get(container_name)
-        container.pause()
+        container.stop()
     except errors.NotFound:
         raise Exception(f"Container `{container_name}` not found")
 
 
-def unpause(container_name):
+def start(container_name):
     try:
         container = client.containers.get(container_name)
-        container.unpause()
+        container.start()
     except errors.NotFound:
         raise Exception(f"Container `{container_name}` not found")
