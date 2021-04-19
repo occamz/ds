@@ -7,10 +7,9 @@ Note:
 
 ### Install:
 ```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-pip install --editable .
+cd code
+git clone https://github.com/occamz/ds.git
+pip install --global --editable ds
 ```
 
 ### Shell completion:

@@ -3,12 +3,18 @@ from setuptools import setup
 setup(
     name="ds",
     version="1.0",
-    py_modules=["main"],
+    py_modules=["ds"],
     install_requires=[
-        "Click",
+        "click",
+        "click_aliases",
+        "colorama",
+        "hruid",
+        "terminaltables",
+        "PyYAML",
+        "docker",
     ],
     entry_points="""
         [console_scripts]
-        ds=main:cli
+        ds=ds:cli
     """,
 )
