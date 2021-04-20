@@ -27,6 +27,10 @@ class Snapshot:
     def created_when(self):
         return datetime.datetime.fromtimestamp(self.created)
 
+    @property
+    def path(self):
+        return f"{container.HELPER_BASE_PATH}/{self.uuid}"
+
 
 # Could be made lazy-loaded
 def load_database():
@@ -60,9 +64,10 @@ def snapshot_create(name):
 
     snapshot = Snapshot(name=name)
 
-    # Rename and move settings + hardcoded path to "container"
-    container.sync(settings.get("directory"), f"/mnt/ds/{snapshot.uuid}")
-    snapshot.size = container.directory_size(f"/mnt/ds/{snapshot.uuid}")
+    with container.freeze_target_container():
+        container.sync(settings.get("directory"), snapshot.path)
+
+    snapshot.size = container.directory_size(snapshot.path)
 
     snapshots.append(snapshot)
     save_database(snapshots)
@@ -83,8 +88,7 @@ def snapshot_delete(name):
 
     snapshots_after = list(filter(lambda s: s.name != name, snapshots_before))
 
-    # Rename and move hardcoded path to "container"
-    container.directory_remove(f"/mnt/ds/{snapshot.uuid}")
+    container.directory_remove(snapshot.path)
 
     save_database(snapshots_after)
 
@@ -101,8 +105,5 @@ def snapshot_restore(name):
 
     snapshot = existing_snapshots[0]
 
-    container.stop(settings.get("container_name"))
-
-    container.sync(f"/mnt/ds/{snapshot.uuid}", settings.get("directory"))
-
-    container.start(settings.get("container_name"))
+    with container.freeze_target_container():
+        container.sync(snapshot.path, settings.get("directory"))

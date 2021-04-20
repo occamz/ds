@@ -1,34 +1,33 @@
 # ds - docker snapshot
 
-`ds` is a development utility for managing snapshots inside a docker container. Personally I use it to quickly save the state of my development database, try out something that mutates the state - a data migration or user interaction - and return to the initial state. Often repeatedly, because trial and error is essential to my workflow. You can probably use it on any sort of stored data, probably. 
+`ds` is a development utility for managing snapshots inside a docker container.
 
-Note:
-- This repository is still a work in progress.
-- Running `docker volume prune` removes the snapshots. Either make sure the user is aware of this or come up with some sort of solution (ie. dummy container connected to the volume to preserve it)
+Personally I use it to quickly save the state of my development database, try out something that mutates the state - a data migration or user interaction - and return to the initial state. Often repeatedly, because trial and error is essential. You can probably use it on any sort of stored data, probably. 
 
+Note: This repository is still a work in progress.
 
 ## Usage
 
-### Create a snapshot
+Create a snapshot
 ```bash
 ds create name-goes-here
 # or auto-generate a name
 ds create 
 ```
 
-### Restore a snapshot
+Restore a snapshot
 ```bash
 ds restore name-goes-here
 # or restore the latest snapshot
 ds restore
 ```
 
-### List snapshots
+List snapshots
 ```bash
 ds ls
 ```
 
-### Delete a snapshot
+Delete snapshots
 ```bash
 ds delete name-goes-here
 ```
@@ -41,7 +40,7 @@ git clone https://github.com/occamz/ds.git
 sudo pip install --editable ds  # Sadly this seems like the only way to have shell completion work without any extra steps
 ```
 
-If you want shell completion you can add this:
+Shell completion:
 ```bash
 # For Bash, add this to ~/.bashrc:
 eval "$(_DS_COMPLETE=source_bash ds)"
@@ -67,17 +66,17 @@ services:
   ...
 ```
 
-### 1) Browse to your project root
+1) Browse to your project root
 ```bash
 cd code/your-awesome-project
 ```
 
-### 2) Create `ds.yaml` template file
+2) Create `ds.yaml` template file
 ```bash
 ds init
 ```
 
-### 3) Edit your `ds.yaml`
+3) Edit your `ds.yaml`
 ```yaml
 # The target container
 container_name: "db"

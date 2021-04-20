@@ -9,7 +9,7 @@ setup(
         "click_aliases",
         "colorama",
         "hruid",
-        "terminaltables",
+        "rich",
         "PyYAML",
         "docker",
     ],

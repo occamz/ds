@@ -1,16 +1,43 @@
 import io
 import re
 import shlex
+import importlib.resources as pkg_resources
 import click
 import docker
-import importlib.resources as pkg_resources
-import settings
-from docker import errors
 import images
+import settings
+from functools import wraps
+from docker import errors
 
 
 client = docker.from_env()
-BASE_PATH = "/mnt/ds"
+HELPER_BASE_PATH = "/mnt/ds"
+container = None
+
+
+def requires_helper_container(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        alloc()
+        res = f(*args, **kwargs)
+        dealloc()
+        return res
+    return wrapper
+
+
+class freeze_target_container(object):
+    def __init__(self):
+        pass
+
+    def __enter__(self):
+        stop(settings.get("container_name"))
+
+    def __exit__(self, type, value, traceback):
+        start(settings.get("container_name"))
+
+
+def is_target_container_running():
+    return is_running(settings.get("container_name"))
 
 
 def get_image_id():
@@ -38,21 +65,21 @@ def create_volume():
     return client.volumes.create(name=get_volume_id())
 
 
-def run_container(image, volume):
-    container = client.containers.run(
+def create_container(image, volume, volumes_from):
+    return client.containers.create(
         image,
         name=get_container_id(),
-        volumes={volume.name: {"bind": BASE_PATH, "mode": "rw"}},
-        volumes_from=[settings.get("container_name")],
-        working_dir=BASE_PATH,
-        remove=True,
-        auto_remove=True,
-        detach=True,
+        volumes={volume.name: {"bind": HELPER_BASE_PATH, "mode": "rw"}},
+        volumes_from=volumes_from,
+        working_dir=HELPER_BASE_PATH,
+        tty=True,
+        stdin_open=True,
+        auto_remove=False,
     )
-    return container
 
 
-def init():
+def alloc():
+    global container
     # Get or build image
     try:
         # NOTE: Blocks future versions of Dockerfile
@@ -70,17 +97,21 @@ def init():
     try:
         container = client.containers.get(get_container_id())
     except errors.NotFound:
-        container = run_container(image, volume)
+        target_container_name = settings.get("container_name")
+        if not exists(target_container_name):
+            raise Exception(f"Target container with name {target_container_name} not found.")
+        container = create_container(image, volume, target_container_name)
 
-    return container
+    container.start()
 
 
-def sh(input, container=None):
+def dealloc():
+    container.stop(timeout=0)
 
-    if not container:
-        container = init()
 
-    code, output = container.exec_run(["sh", "-c", input])
+def sh(command):
+    global container
+    code, output = container.exec_run(["sh", "-c", command])
     return output.decode("utf-8")
 
 
@@ -97,13 +128,13 @@ def directory_remove(path):
 
 
 def directory_size(path):
-    # Replace with regex
+    # TODO: Replace with regex
     size = int(sh(f"du -s {path}").split("\t")[0]) * 1024
     return size
 
 
 def sync(source_directory, destination_path):
-    container = init()
+    global container
 
     response = container.exec_run(
         [
@@ -119,28 +150,46 @@ def sync(source_directory, destination_path):
     with click.progressbar(length=100, label="Copying files", show_eta=True) as bar:
         for out in response.output:
             percentage_string = re.search(r"\d+%", out.decode("utf-8"))
-            if percentage_string:
-                try:
-                    percentage = int(percentage_string.group()[:-1])
-                    if current_percentage < percentage:
-                        bar.update(percentage - current_percentage)
-                        current_percentage = percentage
-                except Exception as e:
-                    pass
+            if not percentage_string:
+                continue
+
+            try:
+                percentage = int(percentage_string.group()[:-1])
+                if current_percentage >= percentage:
+                    continue
+            except Exception as e:
+                pass
+
+            bar.update(percentage - current_percentage)
+            current_percentage = percentage
+
         bar.update(100)
 
 
 def stop(container_name):
     try:
-        container = client.containers.get(container_name)
-        container.stop()
+        client.containers.get(container_name).stop()
     except errors.NotFound:
         raise Exception(f"Container `{container_name}` not found")
 
 
 def start(container_name):
     try:
-        container = client.containers.get(container_name)
-        container.start()
+        client.containers.get(container_name).start()
     except errors.NotFound:
         raise Exception(f"Container `{container_name}` not found")
+
+
+def exists(container_name):
+    try:
+        client.containers.get(container_name)
+        return True
+    except errors.NotFound:
+        return False
+
+
+def is_running(container_name):
+    try:
+        return client.containers.get(container_name).status == "running"
+    except errors.NotFound:
+        return False
