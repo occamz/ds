@@ -7,41 +7,41 @@ Note:
 - Running `docker volume prune` removes the snapshots. Either make sure the user is aware of this or come up with some sort of solution (ie. dummy container connected to the volume to preserve it)
 
 
-### How to use:
+## Usage
 
-#### Create a snapshot
+### Create a snapshot
 ```bash
 ds create name-goes-here
 # or auto-generate a name
 ds create 
 ```
 
-#### Restore a snapshot
+### Restore a snapshot
 ```bash
 ds restore name-goes-here
 # or restore the latest snapshot
 ds restore
 ```
 
-#### List snapshots
+### List snapshots
 ```bash
 ds ls
 ```
 
-#### Delete snapshots
+### Delete a snapshot
 ```bash
 ds delete name-goes-here
 ```
 
 
-### Installation:
+## Installing
 ```bash
 cd code
 git clone https://github.com/occamz/ds.git
 sudo pip install --editable ds  # Sadly this seems like the only way to have shell completion work without any extra steps
 ```
 
-#### Shell completion:
+If you want shell completion you can add this:
 ```bash
 # For Bash, add this to ~/.bashrc:
 eval "$(_DS_COMPLETE=source_bash ds)"
@@ -50,7 +50,7 @@ eval "$(_DS_COMPLETE=source_bash ds)"
 eval "$(_DS_COMPLETE=source_zsh ds)"
 ```
 
-### Example project setup:
+## Example project setup
 In this example we use `ds` to create and restore database snapshots in our development environment. The projects `docker-compose.yml` file could look something like this:
 ```
 version: "3.8"
@@ -67,17 +67,17 @@ services:
   ...
 ```
 
-#### 1) Browse to your project root
+### 1) Browse to your project root
 ```bash
 cd code/your-awesome-project
 ```
 
-#### 2) Create `ds.yaml` template file
+### 2) Create `ds.yaml` template file
 ```bash
 ds init
 ```
 
-#### 3) Edit your `ds.yaml`
+### 3) Edit your `ds.yaml`
 ```yaml
 # The target container
 container_name: "db"
