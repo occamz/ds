@@ -1,5 +1,6 @@
 import io
 import re
+import time
 import shlex
 import importlib.resources as pkg_resources
 import click
@@ -7,6 +8,7 @@ import docker
 import images
 import settings
 from functools import wraps
+from rich.progress import Progress
 from docker import errors
 
 
@@ -146,8 +148,10 @@ def sync(source_directory, destination_path):
         stdout=True,
         stderr=True,
     )
+
     current_percentage = 0
-    with click.progressbar(length=100, label="Copying files", show_eta=True) as bar:
+    with Progress() as progress:
+        task = progress.add_task("Copying files...", total=100)
         for out in response.output:
             percentage_string = re.search(r"\d+%", out.decode("utf-8"))
             if not percentage_string:
@@ -160,20 +164,21 @@ def sync(source_directory, destination_path):
             except Exception as e:
                 pass
 
-            bar.update(percentage - current_percentage)
+            progress.update(task, advance=percentage - current_percentage)
             current_percentage = percentage
-
-        bar.update(100)
+        progress.update(task, completed=100)
 
 
 def stop(container_name):
+    click.echo(f"Stopping container {container_name}...")
     try:
-        client.containers.get(container_name).stop()
+        client.containers.get(container_name).stop(timeout=1)
     except errors.NotFound:
         raise Exception(f"Container `{container_name}` not found")
 
 
 def start(container_name):
+    click.echo(f"Starting container {container_name}...")
     try:
         client.containers.get(container_name).start()
     except errors.NotFound:
