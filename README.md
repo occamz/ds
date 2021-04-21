@@ -6,6 +6,22 @@ Personally I use it to quickly save the state of my development database, try ou
 
 Note: This repository is still a work in progress.
 
+## Installing
+```bash
+# Note: excutable will be called `ds`
+pip install docker-snapshot
+```
+
+Shell completion:
+```bash
+# For Bash, add this to ~/.bashrc:
+eval "$(_DS_COMPLETE=source_bash ds)"
+
+# For Zsh, add this to ~/.zshrc:
+eval "$(_DS_COMPLETE=source_zsh ds)"
+```
+
+
 ## Usage
 
 Create a snapshot
@@ -30,23 +46,6 @@ ds ls
 Delete snapshots
 ```bash
 ds delete name-goes-here
-```
-
-
-## Installing
-```bash
-cd code
-git clone https://github.com/occamz/ds.git
-sudo pip install --editable ds  # Sadly this seems like the only way to have shell completion work without any extra steps
-```
-
-Shell completion:
-```bash
-# For Bash, add this to ~/.bashrc:
-eval "$(_DS_COMPLETE=source_bash ds)"
-
-# For Zsh, add this to ~/.zshrc:
-eval "$(_DS_COMPLETE=source_zsh ds)"
 ```
 
 ## Example project setup
