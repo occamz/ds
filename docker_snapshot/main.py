@@ -2,10 +2,7 @@ import click
 from click_aliases import ClickAliasedGroup
 from rich.console import Console
 from rich.table import Table
-import container
-import snapshot
-import settings
-import utils
+from docker_snapshot import container, snapshot, settings, utils
 
 """
 Configuration parameters:
@@ -52,7 +49,12 @@ def ls():
     table.add_column("UUID", style="dim")
 
     for s in snapshots:
-        table.add_row(s.created_when.strftime("%Y-%m-%d %H:%M:%S"), f"[bold]{s.name}[/bold]", utils.sizeof_fmt(s.size), s.uuid)
+        table.add_row(
+            s.created_when.strftime("%Y-%m-%d %H:%M:%S"),
+            f"[bold]{s.name}[/bold]",
+            utils.sizeof_fmt(s.size),
+            s.uuid,
+        )
 
     console.print(table)
 
@@ -122,5 +124,5 @@ def init():
         error(e)
 
 
-if __name__ == "__main__":
+def execute_cli():
     cli()

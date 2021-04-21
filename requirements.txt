@@ -1,7 +1,0 @@
-click==7.1.2
-click_aliases==1.0.1
-colorama==0.4.4
-hruid==0.0.3
-rich==10.1.0
-PyYAML==5.4.1
-docker==5.0.0

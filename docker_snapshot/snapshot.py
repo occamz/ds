@@ -3,8 +3,7 @@ import uuid
 import hruid
 import datetime
 import dataclasses
-import container
-import settings
+from docker_snapshot import container, settings
 
 
 @dataclasses.dataclass

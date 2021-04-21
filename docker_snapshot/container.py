@@ -1,19 +1,18 @@
 import io
 import re
-import time
 import shlex
 import importlib.resources as pkg_resources
 import click
 import docker
-import images
-import settings
 from functools import wraps
 from rich.progress import Progress
 from docker import errors
+from docker_snapshot import images, settings
 
+
+HELPER_BASE_PATH = "/mnt/ds"
 
 client = docker.from_env()
-HELPER_BASE_PATH = "/mnt/ds"
 container = None
 
 
@@ -24,6 +23,7 @@ def requires_helper_container(f):
         res = f(*args, **kwargs)
         dealloc()
         return res
+
     return wrapper
 
 
@@ -101,7 +101,9 @@ def alloc():
     except errors.NotFound:
         target_container_name = settings.get("container_name")
         if not exists(target_container_name):
-            raise Exception(f"Target container with name {target_container_name} not found.")
+            raise Exception(
+                f"Target container with name {target_container_name} not found."
+            )
         container = create_container(image, volume, target_container_name)
 
     container.start()
