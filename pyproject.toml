@@ -2,18 +2,18 @@
 name = "docker-snapshot"
 homepage = "https://github.com/occamz/ds"
 documentation = "https://github.com/occamz/ds"
-version = "1.0.2"
+version = "1.0.3"
 description = "`ds` is a development utility for managing snapshots inside a docker container."
 authors = ["occamz"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-click = "^7.1.2"
+click = "^8.0.1"
 click-aliases = "^1.0.1"
 colorama = "^0.4.4"
 hruid = "^0.0.3"
-rich = "^10.1.0"
+rich = "^10.7.0"
 PyYAML = "^5.4.1"
 docker = "^5.0.0"
 
