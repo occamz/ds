@@ -18,26 +18,26 @@ def error(message):
 
 @container.requires_helper_container
 def get_names(ctx, args, incomplete):
-    snapshots = snapshot.snapshot_list()
+    snapshot_list = snapshot.snapshot_list()
     return list(
         filter(
             lambda name: name.startswith(incomplete),
-            map(lambda s: s.name, snapshots),
+            map(lambda s: s.name, snapshot_list),
         )
     )
 
 
 @click.group(cls=ClickAliasedGroup)
-def cli():
+def snapshots():
     pass
 
 
-@cli.command()
+@snapshots.command()
 @container.requires_helper_container
 def ls():
-    snapshots = snapshot.snapshot_list()
+    snapshot_list = snapshot.snapshot_list()
 
-    if not len(snapshots):
+    if not len(snapshot_list):
         click.echo("No snapshots found")
         return
 
@@ -48,7 +48,7 @@ def ls():
     table.add_column("Size", style="dim")
     table.add_column("UUID", style="dim")
 
-    for s in snapshots:
+    for s in snapshot_list:
         table.add_row(
             s.created_when.strftime("%Y-%m-%d %H:%M:%S"),
             f"[bold]{s.name}[/bold]",
@@ -59,7 +59,7 @@ def ls():
     console.print(table)
 
 
-@cli.command()
+@snapshots.command()
 @click.argument("name", default="")
 @container.requires_helper_container
 def create(name):
@@ -75,7 +75,7 @@ def create(name):
         error(e)
 
 
-@cli.command(aliases=["d", "rm"])
+@snapshots.command(aliases=["d", "rm"])
 @click.argument("name", type=click.STRING, autocompletion=get_names)
 @container.requires_helper_container
 def delete(name):
@@ -86,7 +86,7 @@ def delete(name):
         error(e)
 
 
-@cli.command()
+@snapshots.command()
 @click.argument("name", default="", type=click.STRING, autocompletion=get_names)
 @container.requires_helper_container
 def restore(name):
@@ -96,9 +96,9 @@ def restore(name):
 
     # Restore latest if no name is given
     if not name:
-        snapshots = snapshot.snapshot_list()
-        if len(snapshots):
-            name = snapshots[-1].name
+        snapshot_list = snapshot.snapshot_list()
+        if len(snapshot_list):
+            name = snapshot_list[-1].name
             click.echo(
                 click.style(
                     f"No snapshot name given, restoring latest snapshot `{name}`",
@@ -115,7 +115,7 @@ def restore(name):
         error(e)
 
 
-@cli.command()
+@snapshots.command()
 def init():
     try:
         settings.init()
@@ -125,4 +125,4 @@ def init():
 
 
 def execute_cli():
-    cli()
+    snapshots()
