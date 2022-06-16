@@ -76,7 +76,7 @@ def create(name):
 
 
 @snapshots.command(aliases=["d", "rm"])
-@click.argument("name", type=click.STRING, autocompletion=get_names)
+@click.argument("name", type=click.STRING, shell_complete=get_names)
 @container.requires_helper_container
 def delete(name):
     try:
@@ -87,7 +87,7 @@ def delete(name):
 
 
 @snapshots.command()
-@click.argument("name", default="", type=click.STRING, autocompletion=get_names)
+@click.argument("name", default="", type=click.STRING, shell_complete=get_names)
 @container.requires_helper_container
 def restore(name):
     if not container.is_target_container_running():
