@@ -28,7 +28,19 @@ def get_names(ctx, args, incomplete):
 
 
 @click.group(cls=ClickAliasedGroup)
-def snapshots():
+@click.option('--container-name')
+@click.option('--directory')
+@click.option('--namespace')
+def snapshots(container_name, directory, namespace):
+    if container_name or directory or namespace:
+        s = settings.get_default_settings()
+        if container_name:
+            s.container_name = container_name
+        if directory:
+            s.directory = directory
+        if namespace:
+            s.namespace = namespace
+        settings._data = s
     pass
 
 

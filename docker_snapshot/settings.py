@@ -15,6 +15,10 @@ class Settings:
 _data = None
 
 
+def get_default_settings():
+    return Settings(container_name="", directory="/", namespace="ds")
+
+
 def init():
     path = DEFAULT_FILENAME
     if os.path.exists(path):
@@ -26,7 +30,7 @@ def init():
         f.write(
             yaml.dump(
                 dataclasses.asdict(
-                    Settings(container_name="", directory="/", namespace="ds")
+                    get_default_settings()
                 )
             )
         )
