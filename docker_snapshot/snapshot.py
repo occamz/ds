@@ -11,6 +11,7 @@ class Snapshot:
     uuid: str = None
     name: str = None
     size: int = 0
+    file_count: int = 0
     created: int = 0
 
     def __post_init__(self):
@@ -21,6 +22,9 @@ class Snapshot:
         if not self.name:
             generator = hruid.Generator(use_number=False)
             self.name = generator.random()
+        # NOTE: Soft "migration", will result in saved file_count after first create / remove
+        if not self.file_count:
+            self.file_count = container.directory_filecount(self.path)
 
     @property
     def created_when(self):

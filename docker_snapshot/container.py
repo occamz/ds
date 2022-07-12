@@ -136,6 +136,10 @@ def directory_size(path):
     size = int(sh(f"du -s {path}").split("\t")[0]) * 1024
     return size
 
+def directory_filecount(path):
+    count = int(sh(f"find {path} -type f | wc -l"))
+    return count
+
 
 def sync(source_directory, destination_path):
     global container

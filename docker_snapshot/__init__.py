@@ -58,6 +58,7 @@ def ls():
     table.add_column("Name")
     table.add_column("Size", style="dim")
     table.add_column("UUID", style="dim")
+    table.add_column("File count", style="dim", justify="right")
 
     for s in snapshot_list:
         table.add_row(
@@ -65,6 +66,7 @@ def ls():
             f"[bold]{s.name}[/bold]",
             utils.sizeof_fmt(s.size),
             s.uuid,
+            str(s.file_count),
         )
 
     console.print(table)
