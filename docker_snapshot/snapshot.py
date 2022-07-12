@@ -110,3 +110,11 @@ def snapshot_restore(name):
 
     with container.freeze_target_container():
         container.sync(snapshot.path, settings.get("directory"))
+
+
+def snapshot_present_stats():
+    path = settings.get("directory")
+    return Snapshot(
+        file_count=container.directory_filecount(path),
+        size=container.directory_size(path),
+    )

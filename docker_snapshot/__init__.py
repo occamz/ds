@@ -69,6 +69,11 @@ def ls():
             str(s.file_count),
         )
 
+    # Show the present stats
+    present = snapshot.snapshot_present_stats()
+    table.add_row("present", "", utils.sizeof_fmt(present.size), "", str(present.file_count), style="green")
+
+
     console.print(table)
 
 
