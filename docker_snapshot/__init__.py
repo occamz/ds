@@ -41,7 +41,6 @@ def snapshots(container_name, directory, namespace):
         if namespace:
             s.namespace = namespace
         settings._data = s
-    pass
 
 
 @snapshots.command()
