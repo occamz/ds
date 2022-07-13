@@ -65,12 +65,14 @@ def snapshot_create(name):
     if len(existing_snapshots) > 0:
         raise Exception("A snapshot with that name already exists")
 
-    snapshot = Snapshot(name=name)
+    # Dummy file_count for the command to only run once
+    snapshot = Snapshot(name=name, file_count=123)
 
     with container.freeze_target_container():
         container.sync(settings.get("directory"), snapshot.path)
 
     snapshot.size = container.directory_size(snapshot.path)
+    snapshot.file_count = container.directory_filecount(snapshot.path)
 
     snapshots.append(snapshot)
     save_database(snapshots)

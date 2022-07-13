@@ -137,8 +137,8 @@ def directory_size(path):
     return size
 
 def directory_filecount(path):
-    count = int(sh(f"find {path} -type f | wc -l"))
-    return count
+    try: return int(sh(f"find {path} -type f | wc -l"))
+    except ValueError: return None
 
 
 def sync(source_directory, destination_path):
