@@ -8,7 +8,7 @@ Note: This repository is still a work in progress.
 
 ## Installing
 ```bash
-# Note: excutable will be called `ds`
+# Note: executable will be called `ds`
 pip install docker-snapshot
 ```
 

@@ -9,13 +9,13 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-click = "^8.0.1"
+click = "^8.1.6"
 click-aliases = "^1.0.1"
-colorama = "^0.4.4"
+colorama = "^0.4.6"
 hruid = "^0.0.3"
-rich = "^10.7.0"
-PyYAML = "^5.4.1"
-docker = "^5.0.0"
+rich = "^13.5.2"
+PyYAML = "^6.0.1"
+docker = "^6.1.3"
 six = "^1.16.0"
 
 [tool.poetry.scripts]
