@@ -2,7 +2,7 @@
 name = "docker-snapshot"
 homepage = "https://github.com/occamz/ds"
 documentation = "https://github.com/occamz/ds"
-version = "1.0.10"
+version = "1.0.11"
 description = "`ds` is a development utility for managing snapshots inside a docker container."
 authors = ["occamz"]
 readme = "README.md"

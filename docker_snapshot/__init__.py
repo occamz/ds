@@ -28,6 +28,7 @@ def get_names(ctx, args, incomplete):
 
 
 @click.group(cls=ClickAliasedGroup)
+@click.version_option()
 @click.option('--container-name')
 @click.option('--directory')
 @click.option('--namespace')
