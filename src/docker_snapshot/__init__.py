@@ -24,7 +24,7 @@ def error(message: t.Union[str, BaseException]) -> None:
 
 @container.requires_helper_container
 def get_names(
-    ctx: object,
+    ctx: click.Context,
     args: object,
     incomplete: t.Union[str, t.Tuple[str, ...]],
 ) -> t.Sequence[str]:
