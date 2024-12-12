@@ -8,9 +8,9 @@ DEFAULT_FILENAME = "ds.yaml"
 
 @dataclasses.dataclass
 class Settings:
-    container_name: ""
-    directory: ""
-    namespace: ""
+    container_name: str
+    directory: str
+    namespace: str
 
 
 _data = None
