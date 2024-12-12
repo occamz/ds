@@ -12,22 +12,33 @@ if t.TYPE_CHECKING:
     from typing_extensions import TypeGuard
 
 
+def _generate_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+def _generate_name() -> str:
+    return hruid.Generator(use_number=False).random()  # type: ignore[no-any-return]
+
+
+def _get_timestamp() -> int:
+    return int(datetime.datetime.now().timestamp())
+
+
+# TODO typing: pathlib
+def _get_snapshot_path(suffix: str) -> str:
+    return f"{container.HELPER_BASE_PATH}/{suffix}"
+
+
 @dataclasses.dataclass
 class Snapshot:
-    uuid: t.Optional[str] = None
-    name: t.Optional[str] = None
-    size: int = 0
-    file_count: t.Optional[int] = 0
-    created: int = 0
+    uuid: str = dataclasses.field(default_factory=_generate_uuid)
+    name: str = dataclasses.field(default_factory=_generate_name)
+    size: int = dataclasses.field(default=0)
+    file_count: int = dataclasses.field(default=0)
+    created: int = dataclasses.field(default_factory=_get_timestamp)
 
+    # TODO: remove, if possible
     def __post_init__(self) -> None:
-        if not self.uuid:
-            self.uuid = str(uuid.uuid4())
-        if not self.created:
-            self.created = int(datetime.datetime.now().timestamp())
-        if not self.name:
-            generator = hruid.Generator(use_number=False)
-            self.name = generator.random()
         # NOTE: Soft "migration", will result in saved file_count
         # after first create / remove
         if not self.file_count:
@@ -39,7 +50,12 @@ class Snapshot:
 
     @property
     def path(self) -> str:
-        return f"{container.HELPER_BASE_PATH}/{self.uuid}"
+        return _get_snapshot_path(suffix=self.uuid)
+
+
+def _create_snapshot(**kwargs: object) -> Snapshot:
+    _kwargs = {k: v for k, v in kwargs.items() if v}
+    return Snapshot(**_kwargs)  # type: ignore[arg-type]
 
 
 # Could be made lazy-loaded
@@ -51,7 +67,7 @@ def load_database() -> t.MutableSequence[Snapshot]:
     def _transform(data: object) -> Snapshot:
         if not isinstance(data, dict):
             raise RuntimeError("expected dict from json")
-        return Snapshot(**data)
+        return _create_snapshot(**data)
 
     return list(map(_transform, json.loads(json_string)))
 
@@ -66,7 +82,7 @@ def snapshot_list() -> t.Sequence[Snapshot]:
     return snapshots
 
 
-def snapshot_create(name: str) -> Snapshot:
+def snapshot_create(name: t.Optional[str]) -> Snapshot:
     snapshots = load_database()
 
     def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
@@ -75,14 +91,22 @@ def snapshot_create(name: str) -> Snapshot:
     if any(filter(_name_equals, snapshots)):
         raise Exception("A snapshot with that name already exists")
 
-    # Dummy file_count for the command to only run once
-    snapshot = Snapshot(name=name, file_count=123)
+    _uuid = _generate_uuid()
+    _path = _get_snapshot_path(suffix=_uuid)
 
     with container.freeze_target_container():
-        container.sync(settings.get("directory"), snapshot.path)
+        container.sync(settings.get("directory"), _path)
 
-    snapshot.size = container.directory_size(snapshot.path)
-    snapshot.file_count = container.directory_filecount(snapshot.path)
+    _name = name or _generate_name()
+    _size = container.directory_size(_path)
+    _file_count = container.directory_filecount(_path)
+
+    snapshot = Snapshot(
+        uuid=_uuid,
+        name=_name,
+        size=_size,
+        file_count=_file_count,
+    )
 
     snapshots.append(snapshot)
     save_database(snapshots)

@@ -175,11 +175,11 @@ def directory_size(path: str) -> int:
 
 
 # TODO: pathlib
-def directory_filecount(path: str) -> t.Optional[int]:
+def directory_filecount(path: str) -> int:
     try:
         return int(sh(f"find {path} -type f | wc -l"))
     except ValueError:
-        return None
+        return 0
 
 
 # TODO: pathlib
