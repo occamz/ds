@@ -1,6 +1,7 @@
+import dataclasses
 import os
 import yaml
-import dataclasses
+
 
 DEFAULT_FILENAME = "ds.yaml"
 
@@ -27,13 +28,7 @@ def init():
         )
 
     with open(path, "w") as f:
-        f.write(
-            yaml.dump(
-                dataclasses.asdict(
-                    get_default_settings()
-                )
-            )
-        )
+        f.write(yaml.dump(dataclasses.asdict(get_default_settings())))
 
 
 def get(attribute):
