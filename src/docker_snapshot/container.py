@@ -2,6 +2,7 @@ import importlib.resources as pkg_resources
 import io
 import re
 import shlex
+import typing as t
 from functools import wraps
 import click
 import docker
@@ -10,15 +11,27 @@ from rich.progress import Progress
 from docker_snapshot import images, settings
 
 
+if t.TYPE_CHECKING:
+    from types import TracebackType
+    from docker.client import DockerClient
+    from docker.models.containers import Container
+    from docker.models.images import Image
+    from docker.models.volumes import Volume
+    from typing_extensions import ParamSpec
+
+    P = ParamSpec("P")
+    R = t.TypeVar("R")
+
+
 HELPER_BASE_PATH = "/mnt/ds"
 
-client = docker.from_env()
-container = None
+client: "DockerClient" = docker.from_env()
+container: t.Optional["Container"] = None
 
 
-def requires_helper_container(f):
+def requires_helper_container(f: t.Callable["P", "R"]) -> t.Callable["P", "R"]:
     @wraps(f)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: "P.args", **kwargs: "P.kwargs") -> "R":
         alloc()
         res = f(*args, **kwargs)
         dealloc()
@@ -28,46 +41,55 @@ def requires_helper_container(f):
 
 
 class freeze_target_container(object):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         stop(settings.get("container_name"))
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(
+        self,
+        exception_type: t.Optional[t.Type[BaseException]],
+        exception: t.Optional[BaseException],
+        traceback: t.Optional["TracebackType"],
+    ) -> None:
         start(settings.get("container_name"))
 
 
-def is_target_container_running():
+def is_target_container_running() -> bool:
     return is_running(settings.get("container_name"))
 
 
-def get_image_id():
+def get_image_id() -> str:
     namespace = settings.get("namespace")
     return f"ds-{namespace}"
 
 
-def get_volume_id():
+def get_volume_id() -> str:
     namespace = settings.get("namespace")
     return f"ds-{namespace}"
 
 
-def get_container_id():
+def get_container_id() -> str:
     namespace = settings.get("namespace")
     return f"ds-{namespace}"
 
 
-def build_image():
+def build_image() -> "Image":
     dockerfile = io.BytesIO(pkg_resources.read_text(images, "rsync").encode("utf-8"))
     image, _ = client.images.build(fileobj=dockerfile, tag=get_image_id())
     return image
 
 
-def create_volume():
+def create_volume() -> "Volume":
     return client.volumes.create(name=get_volume_id())
 
 
-def create_container(image, volume, volumes_from):
+def create_container(
+    image: t.Union[str, "Image"],
+    volume: "Volume",
+    volumes_from: t.Optional[t.Sequence[str]],
+) -> "Container":
     return client.containers.create(
         image,
         name=get_container_id(),
@@ -80,7 +102,7 @@ def create_container(image, volume, volumes_from):
     )
 
 
-def alloc():
+def alloc() -> None:
     global container
     # Get or build image
     try:
@@ -109,43 +131,64 @@ def alloc():
     container.start()
 
 
-def dealloc():
+def dealloc() -> None:
+    global container
+
+    if container is None:
+        return
+
     container.stop(timeout=0)
 
 
-def sh(command):
+def sh(command: str) -> str:
     global container
-    code, output = container.exec_run(["sh", "-c", command])
+
+    # TODO typing: fix
+    if container is None:
+        raise RuntimeError("container global not set")
+
+    result = container.exec_run(["sh", "-c", command])
+    output = t.cast(bytes, result.output)
     return output.decode("utf-8")
 
 
-def file_read(path):
+# TODO: pathlib
+def file_read(path: str) -> str:
     return sh(f"cat {path} 2>/dev/null")
 
 
-def file_write(path, content):
+# TODO: pathlib
+def file_write(path: str, content: str) -> str:
     return sh(f"echo {shlex.quote(content)} > {path}")
 
 
-def directory_remove(path):
+# TODO: pathlib
+def directory_remove(path: str) -> str:
     return sh(f"rm -rf {path}")
 
 
-def directory_size(path):
+# TODO: pathlib
+def directory_size(path: str) -> int:
     # TODO: Replace with regex
     size = int(sh(f"du -s {path}").split("\t")[0]) * 1024
     return size
 
 
-def directory_filecount(path):
+# TODO: pathlib
+def directory_filecount(path: str) -> t.Optional[int]:
     try:
         return int(sh(f"find {path} -type f | wc -l"))
     except ValueError:
         return None
 
 
-def sync(source_directory, destination_path):
+# TODO: pathlib
+def sync(source_directory: str, destination_path: str) -> None:
     global container
+
+    # TODO typing: fix
+    if container is None:
+        raise RuntimeError("container global not set")
 
     response = container.exec_run(
         [
@@ -182,7 +225,7 @@ def sync(source_directory, destination_path):
         progress.update(task, completed=100)
 
 
-def stop(container_name):
+def stop(container_name: str) -> None:
     click.echo(f"Stopping container {container_name}...")
     try:
         client.containers.get(container_name).stop(timeout=1)
@@ -190,7 +233,7 @@ def stop(container_name):
         raise Exception(f"Container `{container_name}` not found")
 
 
-def start(container_name):
+def start(container_name: str) -> None:
     click.echo(f"Starting container {container_name}...")
     try:
         client.containers.get(container_name).start()
@@ -198,7 +241,7 @@ def start(container_name):
         raise Exception(f"Container `{container_name}` not found")
 
 
-def exists(container_name):
+def exists(container_name: str) -> bool:
     try:
         client.containers.get(container_name)
         return True
@@ -206,7 +249,7 @@ def exists(container_name):
         return False
 
 
-def is_running(container_name):
+def is_running(container_name: str) -> bool:
     try:
         return client.containers.get(container_name).status == "running"
     except errors.NotFound:

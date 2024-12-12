@@ -1,9 +1,19 @@
 import dataclasses
 import os
+import typing as t
 import yaml
 
 
-DEFAULT_FILENAME = "ds.yaml"
+if t.TYPE_CHECKING:
+    # TODO: remove
+    _Attrs = t.Literal[
+        "container_name",
+        "directory",
+        "namespace",
+    ]
+
+
+DEFAULT_FILENAME: t.Final[str] = "ds.yaml"
 
 
 @dataclasses.dataclass
@@ -13,14 +23,14 @@ class Settings:
     namespace: str
 
 
-_data = None
+_data: t.Optional[Settings] = None
 
 
-def get_default_settings():
+def get_default_settings() -> Settings:
     return Settings(container_name="", directory="/", namespace="ds")
 
 
-def init():
+def init() -> None:
     path = DEFAULT_FILENAME
     if os.path.exists(path):
         raise Exception(
@@ -31,10 +41,12 @@ def init():
         f.write(yaml.dump(dataclasses.asdict(get_default_settings())))
 
 
-def get(attribute):
+# TODO: fix
+def get(attribute: "_Attrs") -> str:
     global _data
     if _data:
-        return getattr(_data, attribute)
+        # HACK: temporary hack
+        return t.cast(str, getattr(_data, attribute))
 
     path = DEFAULT_FILENAME
     if not os.path.exists(path):
@@ -47,4 +59,5 @@ def get(attribute):
 
     _data = Settings(**dict_data)
 
-    return getattr(_data, attribute)
+    # HACK: temporary hack
+    return t.cast(str, getattr(_data, attribute))

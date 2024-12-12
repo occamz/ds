@@ -1,20 +1,26 @@
 import dataclasses
 import datetime
+import itertools
 import json
+import typing as t
 import uuid
-import hruid
+import hruid  # type: ignore[import-untyped]
 from docker_snapshot import container, settings
+
+
+if t.TYPE_CHECKING:
+    from typing_extensions import TypeGuard
 
 
 @dataclasses.dataclass
 class Snapshot:
-    uuid: str = None
-    name: str = None
+    uuid: t.Optional[str] = None
+    name: t.Optional[str] = None
     size: int = 0
-    file_count: int = 0
+    file_count: t.Optional[int] = 0
     created: int = 0
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.uuid:
             self.uuid = str(uuid.uuid4())
         if not self.created:
@@ -28,42 +34,45 @@ class Snapshot:
             self.file_count = container.directory_filecount(self.path)
 
     @property
-    def created_when(self):
+    def created_when(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.created)
 
     @property
-    def path(self):
+    def path(self) -> str:
         return f"{container.HELPER_BASE_PATH}/{self.uuid}"
 
 
 # Could be made lazy-loaded
-def load_database():
+def load_database() -> t.MutableSequence[Snapshot]:
     json_string = container.file_read("db.json")
     if not json_string:
         return []
 
-    return list(
-        map(lambda snapshot_data: Snapshot(**snapshot_data), json.loads(json_string))
-    )
+    def _transform(data: object) -> Snapshot:
+        if not isinstance(data, dict):
+            raise RuntimeError("expected dict from json")
+        return Snapshot(**data)
+
+    return list(map(_transform, json.loads(json_string)))
 
 
-def save_database(snapshot_list):
-    json_string = json.dumps(
-        list(map(lambda snapshot: dataclasses.asdict(snapshot), snapshot_list))
-    )
+def save_database(snapshot_list: t.Sequence[Snapshot]) -> None:
+    json_string = json.dumps(list(map(dataclasses.asdict, snapshot_list)))
     container.file_write("db.json", json_string)
 
 
-def snapshot_list():
+def snapshot_list() -> t.Sequence[Snapshot]:
     snapshots = load_database()
     return snapshots
 
 
-def snapshot_create(name):
+def snapshot_create(name: str) -> Snapshot:
     snapshots = load_database()
 
-    existing_snapshots = list(filter(lambda s: s.name == name, snapshots))
-    if len(existing_snapshots) > 0:
+    def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
+        return snapshot.name == name
+
+    if any(filter(_name_equals, snapshots)):
         raise Exception("A snapshot with that name already exists")
 
     # Dummy file_count for the command to only run once
@@ -80,33 +89,39 @@ def snapshot_create(name):
     return snapshot
 
 
-def snapshot_delete(name):
+def snapshot_delete(name: str) -> None:
     snapshots_before = load_database()
 
-    existing_snapshots = list(filter(lambda s: s.name == name, snapshots_before))
+    def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
+        return snapshot.name == name
+
+    existing_snapshots = tuple(filter(_name_equals, snapshots_before))
     if len(existing_snapshots) > 1:
         raise Exception("This shouldn't happen - 2 snapshots with the same name")
 
-    if len(existing_snapshots) < 1:
+    if not existing_snapshots:
         raise Exception("No snapshot found")
 
     snapshot = existing_snapshots[0]
 
-    snapshots_after = list(filter(lambda s: s.name != name, snapshots_before))
+    snapshots_after = tuple(itertools.filterfalse(_name_equals, snapshots_before))
 
     container.directory_remove(snapshot.path)
 
     save_database(snapshots_after)
 
 
-def snapshot_restore(name):
+def snapshot_restore(name: str) -> None:
     snapshots_before = load_database()
 
-    existing_snapshots = list(filter(lambda s: s.name == name, snapshots_before))
+    def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
+        return snapshot.name == name
+
+    existing_snapshots = tuple(filter(_name_equals, snapshots_before))
     if len(existing_snapshots) > 1:
         raise Exception("This shouldn't happen - 2 snapshots with the same name")
 
-    if len(existing_snapshots) < 1:
+    if not existing_snapshots:
         raise Exception("No snapshot found")
 
     snapshot = existing_snapshots[0]
@@ -115,7 +130,7 @@ def snapshot_restore(name):
         container.sync(snapshot.path, settings.get("directory"))
 
 
-def snapshot_present_stats():
+def snapshot_present_stats() -> Snapshot:
     path = settings.get("directory")
     return Snapshot(
         file_count=container.directory_filecount(path),
