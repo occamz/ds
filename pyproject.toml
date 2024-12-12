@@ -49,7 +49,7 @@ path = "src/docker_snapshot/__about__.py"
 
 
 [tool.hatch.envs.types]
-extra-dependencies = ["mypy>=1.0.0", "docker-stubs"]
+extra-dependencies = ["mypy>=1.0.0", "types-docker"]
 
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/docker_snapshot}"
