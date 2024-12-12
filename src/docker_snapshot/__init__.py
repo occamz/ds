@@ -6,6 +6,11 @@ from rich.table import Table
 from docker_snapshot import container, settings, snapshot, utils
 
 
+if t.TYPE_CHECKING:
+    from typing_extensions import Unpack
+    from docker_snapshot.settings import SettingsKwargs
+
+
 """
 Configuration parameters:
 - container_name: 		postgres					kind-control-plane
@@ -36,19 +41,12 @@ def get_names(
 
 @click.group(cls=ClickAliasedGroup)
 @click.version_option()
-@click.option("--container-name")
-@click.option("--directory")
-@click.option("--namespace")
-def snapshots(container_name: str, directory: str, namespace: str) -> None:
-    if container_name or directory or namespace:
-        s = settings.get_default_settings()
-        if container_name:
-            s.container_name = container_name
-        if directory:
-            s.directory = directory
-        if namespace:
-            s.namespace = namespace
-        settings._data = s
+@click.option("--container-name", type=str)
+@click.option("--directory", type=str)
+@click.option("--namespace", type=str)
+@click.pass_context
+def snapshots(ctx: click.Context, **kwargs: "Unpack[SettingsKwargs]") -> None:
+    ctx.obj = settings.load(**kwargs)
 
 
 @snapshots.command
