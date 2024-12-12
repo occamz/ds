@@ -88,17 +88,18 @@ def create_volume() -> "Volume":
 def create_container(
     image: t.Union[str, "Image"],
     volume: "Volume",
-    volumes_from: t.Optional[t.Sequence[str]],
+    volumes_from: str,
 ) -> "Container":
     return client.containers.create(
         image,
         name=get_container_id(),
         volumes={volume.name: {"bind": HELPER_BASE_PATH, "mode": "rw"}},
-        volumes_from=volumes_from,
+        volumes_from=[volumes_from],
         working_dir=HELPER_BASE_PATH,
         tty=True,
         stdin_open=True,
         auto_remove=False,
+        detach=True,
     )
 
 
