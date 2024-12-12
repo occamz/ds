@@ -22,7 +22,8 @@ class Snapshot:
         if not self.name:
             generator = hruid.Generator(use_number=False)
             self.name = generator.random()
-        # NOTE: Soft "migration", will result in saved file_count after first create / remove
+        # NOTE: Soft "migration", will result in saved file_count
+        # after first create / remove
         if not self.file_count:
             self.file_count = container.directory_filecount(self.path)
 

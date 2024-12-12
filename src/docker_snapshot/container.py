@@ -151,7 +151,11 @@ def sync(source_directory, destination_path):
         [
             "sh",
             "-c",
-            f"rsync -aAHX --delete --info=progress2 {source_directory}/ {destination_path}",
+            # TODO: this could probably be split on every whitespace character
+            (
+                "rsync -aAHX --delete --info=progress2 "
+                f"{source_directory}/ {destination_path}"
+            ),
         ],
         stream=True,
         stdout=True,
