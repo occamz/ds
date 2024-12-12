@@ -111,7 +111,8 @@ def create(name: str) -> None:
         error(e)
 
 
-@snapshots.command(aliases=["d", "rm"])
+# NOTE: somehow mypy sees this as untyped :shrug:
+@snapshots.command(aliases=["d", "rm"])  # type: ignore[misc]
 @click.argument("name", type=click.STRING, shell_complete=get_names)
 @container.requires_helper_container
 def delete(name: str) -> None:
