@@ -1,5 +1,10 @@
 # ds - docker snapshot
 
+[![PyPI - Version](https://img.shields.io/pypi/v/docker-snapshot.svg)](https://pypi.org/project/docker-snapshot)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/docker-snapshot.svg)](https://pypi.org/project/docker-snapshot)
+
+---
+
 `ds` is a development utility for managing snapshots inside a docker container.
 
 Personally I use it to quickly save the state of my development database, try out something that mutates the state - a data migration or user interaction - and return to the initial state. Often repeatedly, because trial and error is essential. You can probably use it on any sort of stored data, probably. 

@@ -3,7 +3,7 @@ name: Publish
 on:
   push:
     tags:
-      - '*.*.*'
+      - "*.*.*"
 
 permissions:
   contents: read
@@ -26,21 +26,11 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install Poetry
-        run: |
-          curl -sSL https://install.python-poetry.org | python - -y
+      - name: Install Hatch
+        run: pip install --upgrade hatch
 
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Update Poetry configuration
-        run: poetry config virtualenvs.create false
-
-      - name: Install dependencies
-        run: poetry install --sync --no-interaction
-
-      - name: Package project
-        run: poetry build
+      - name: Build dist
+        run: hatch build
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
