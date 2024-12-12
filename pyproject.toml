@@ -45,14 +45,14 @@ ds = "docker_snapshot:execute_cli"
 
 
 [tool.hatch.version]
-path = "docker_snapshot/__about__.py"
+path = "src/docker_snapshot/__about__.py"
 
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
 
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:docker_snapshot}"
+check = "mypy --install-types --non-interactive {args:src/docker_snapshot}"
 
 
 [tool.hatch.envs.hatch-test]
@@ -64,10 +64,10 @@ randomize = true
 source_pkgs = ["docker_snapshot"]
 branch = true
 parallel = true
-omit = ["docker_snapshot/__about__.py"]
+omit = ["src/docker_snapshot/__about__.py"]
 
 [tool.coverage.paths]
-jono = ["docker_snapshot", "*/ds/docker_snapshot"]
+docker_snapshot = ["src/docker_snapshot", "*/ds/src/docker_snapshot"]
 tests = []
 
 [tool.coverage.report]
@@ -78,4 +78,4 @@ exclude_lines = ["no cov", "if __name__ == .__main__.:", "if t.TYPE_CHECKING:"]
 exclude = [".github"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["docker_snapshot"]
+packages = ["src/docker_snapshot"]
