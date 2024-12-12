@@ -1,12 +1,12 @@
+import importlib.resources as pkg_resources
 import io
 import re
 import shlex
-import importlib.resources as pkg_resources
+from functools import wraps
 import click
 import docker
-from functools import wraps
-from rich.progress import Progress
 from docker import errors
+from rich.progress import Progress
 from docker_snapshot import images, settings
 
 
@@ -136,9 +136,12 @@ def directory_size(path):
     size = int(sh(f"du -s {path}").split("\t")[0]) * 1024
     return size
 
+
 def directory_filecount(path):
-    try: return int(sh(f"find {path} -type f | wc -l"))
-    except ValueError: return None
+    try:
+        return int(sh(f"find {path} -type f | wc -l"))
+    except ValueError:
+        return None
 
 
 def sync(source_directory, destination_path):
@@ -148,7 +151,11 @@ def sync(source_directory, destination_path):
         [
             "sh",
             "-c",
-            f"rsync -aAHX --delete --info=progress2 {source_directory}/ {destination_path}",
+            # TODO: this could probably be split on every whitespace character
+            (
+                "rsync -aAHX --delete --info=progress2 "
+                f"{source_directory}/ {destination_path}"
+            ),
         ],
         stream=True,
         stdout=True,
@@ -167,7 +174,7 @@ def sync(source_directory, destination_path):
                 percentage = int(percentage_string.group()[:-1])
                 if current_percentage >= percentage:
                     continue
-            except Exception as e:
+            except Exception:
                 pass
 
             progress.update(task, advance=percentage - current_percentage)

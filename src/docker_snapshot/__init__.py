@@ -2,7 +2,8 @@ import click
 from click_aliases import ClickAliasedGroup
 from rich.console import Console
 from rich.table import Table
-from docker_snapshot import container, snapshot, settings, utils
+from docker_snapshot import container, settings, snapshot, utils
+
 
 """
 Configuration parameters:
@@ -29,9 +30,9 @@ def get_names(ctx, args, incomplete):
 
 @click.group(cls=ClickAliasedGroup)
 @click.version_option()
-@click.option('--container-name')
-@click.option('--directory')
-@click.option('--namespace')
+@click.option("--container-name")
+@click.option("--directory")
+@click.option("--namespace")
 def snapshots(container_name, directory, namespace):
     if container_name or directory or namespace:
         s = settings.get_default_settings()
@@ -72,8 +73,14 @@ def ls():
 
     # Show the present stats
     present = snapshot.snapshot_present_stats()
-    table.add_row("present", "", utils.sizeof_fmt(present.size), "", str(present.file_count), style="green")
-
+    table.add_row(
+        "present",
+        "",
+        utils.sizeof_fmt(present.size),
+        "",
+        str(present.file_count),
+        style="green",
+    )
 
     console.print(table)
 
@@ -145,4 +152,3 @@ def init():
 
 def execute_cli():
     snapshots()
-

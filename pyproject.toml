@@ -74,6 +74,33 @@ tests = []
 exclude_lines = ["no cov", "if __name__ == .__main__.:", "if t.TYPE_CHECKING:"]
 
 
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["C90", "E", "F", "I", "W"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-wrap-aliases = true
+lines-after-imports = 2
+lines-between-types = 0
+order-by-type = true
+no-lines-before = [
+    "standard-library",
+    "first-party",
+    "third-party",
+    "local-folder",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+
 [tool.hatch.build.targets.sdist]
 exclude = [".github"]
 
