@@ -148,7 +148,35 @@ def restore(name: str) -> None:
 
 
 @snapshots.command
-def init() -> None:
+@container.requires_helper_container
+def prune() -> None:
+    _snapshots = snapshot.snapshot_list()
+
+    if not _snapshots:
+        return click.echo(click.style("Nothing to prune", fg="yellow"))
+
+    _n = len(_snapshots)
+    _size = utils.sizeof_fmt(sum(s.size for s in _snapshots))
+    _term = utils.pluralize(word="snapshot", n=_n, suffix="s")
+
+    if not click.prompt(f"Prune {_n} {_term} ({_size})? (y/n)", type=bool):
+        return
+
+    try:
+        for snap in _snapshots:
+            _message = f"Deleting {snap.name} ({utils.sizeof_fmt(snap.size)})"
+            click.echo(click.style(_message, fg="red"))
+
+            snapshot.snapshot_delete(name=snap.name)
+
+        click.echo(click.style(f"Pruned {_n} {_term}", fg="green"))
+
+    except Exception as e:
+        error(e)
+
+
+@snapshots.command()
+def init():
     try:
         settings.init()
         click.echo(click.style("Created `ds.yaml`", fg="green"))
