@@ -11,21 +11,11 @@ def sizeof_fmt(num: float, suffix: str = "B") -> str:
 
 
 @t.overload
-def pluralize(
-    word: str,
-    n: int,
-    *,
-    suffix: str,
-) -> str: ...
+def pluralize(word: str, n: int, *, suffix: str) -> str: ...
 
 
 @t.overload
-def pluralize(
-    word: str,
-    n: int,
-    *,
-    plural: str,
-) -> str: ...
+def pluralize(word: str, n: int, *, plural: str) -> str: ...
 
 
 def pluralize(
