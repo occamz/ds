@@ -1,3 +1,4 @@
+import typing as t
 import click
 from click_aliases import ClickAliasedGroup
 from rich.console import Console
@@ -13,19 +14,24 @@ Configuration parameters:
 """
 
 
-def error(message):
+def error(message: t.Union[str, BaseException]) -> None:
     click.echo(click.style(str(message), fg="red"), err=True)
 
 
 @container.requires_helper_container
-def get_names(ctx, args, incomplete):
-    snapshot_list = snapshot.snapshot_list()
-    return list(
-        filter(
-            lambda name: name.startswith(incomplete),
-            map(lambda s: s.name, snapshot_list),
-        )
-    )
+def get_names(
+    ctx: click.Context,
+    args: object,
+    incomplete: t.Union[str, t.Tuple[str, ...]],
+) -> t.Sequence[str]:
+    def _get_name(snapshot: snapshot.Snapshot) -> str:
+        return snapshot.name
+
+    def _predicate(name: str) -> t.TypeGuard[str]:
+        return name.startswith(incomplete)
+
+    snapshots = snapshot.snapshot_list()
+    return list(filter(_predicate, map(_get_name, snapshots)))
 
 
 @click.group(cls=ClickAliasedGroup)
@@ -33,7 +39,7 @@ def get_names(ctx, args, incomplete):
 @click.option("--container-name")
 @click.option("--directory")
 @click.option("--namespace")
-def snapshots(container_name, directory, namespace):
+def snapshots(container_name: str, directory: str, namespace: str) -> None:
     if container_name or directory or namespace:
         s = settings.get_default_settings()
         if container_name:
@@ -45,9 +51,9 @@ def snapshots(container_name, directory, namespace):
         settings._data = s
 
 
-@snapshots.command()
+@snapshots.command
 @container.requires_helper_container
-def ls():
+def ls() -> None:
     snapshot_list = snapshot.snapshot_list()
 
     if not len(snapshot_list):
@@ -85,26 +91,27 @@ def ls():
     console.print(table)
 
 
-@snapshots.command()
+@snapshots.command
 @click.argument("name", default="")
 @container.requires_helper_container
-def create(name):
+def create(name: str) -> None:
     if not container.is_target_container_running():
         error(f"Target container `{settings.get('container_name')}` is not running.")
         return
 
-    name = name if name else None
+    _name = name if name else None
     try:
-        s = snapshot.snapshot_create(name)
+        s = snapshot.snapshot_create(_name)
         click.echo(click.style(f"Created `{s.name}`", fg="green"))
     except Exception as e:
         error(e)
 
 
-@snapshots.command(aliases=["d", "rm"])
+# NOTE: somehow mypy sees this as untyped :shrug:
+@snapshots.command(aliases=["d", "rm"])  # type: ignore[misc]
 @click.argument("name", type=click.STRING, shell_complete=get_names)
 @container.requires_helper_container
-def delete(name):
+def delete(name: str) -> None:
     try:
         snapshot.snapshot_delete(name)
         click.echo(click.style(f"Deleted `{name}`", fg="red"))
@@ -112,19 +119,18 @@ def delete(name):
         error(e)
 
 
-@snapshots.command()
+@snapshots.command
 @click.argument("name", default="", type=click.STRING, shell_complete=get_names)
 @container.requires_helper_container
-def restore(name):
+def restore(name: str) -> None:
     if not container.is_target_container_running():
         error(f"Target container `{settings.get('container_name')}` is not running.")
         return
 
     # Restore latest if no name is given
     if not name:
-        snapshot_list = snapshot.snapshot_list()
-        if len(snapshot_list):
-            name = snapshot_list[-1].name
+        if snapshots := snapshot.snapshot_list():
+            name = snapshots[-1].name
             click.echo(
                 click.style(
                     f"No snapshot name given, restoring latest snapshot `{name}`",
@@ -141,8 +147,8 @@ def restore(name):
         error(e)
 
 
-@snapshots.command()
-def init():
+@snapshots.command
+def init() -> None:
     try:
         settings.init()
         click.echo(click.style("Created `ds.yaml`", fg="green"))
@@ -150,5 +156,5 @@ def init():
         error(e)
 
 
-def execute_cli():
+def execute_cli() -> None:
     snapshots()

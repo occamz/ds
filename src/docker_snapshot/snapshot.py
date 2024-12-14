@@ -1,112 +1,147 @@
 import dataclasses
 import datetime
+import itertools
 import json
+import typing as t
 import uuid
-import hruid
+import hruid  # type: ignore[import-untyped]
 from docker_snapshot import container, settings
+
+
+def _generate_uuid() -> str:
+    return str(uuid.uuid4())
+
+
+def _generate_name() -> str:
+    return hruid.Generator(use_number=False).random()  # type: ignore[no-any-return]
+
+
+def _get_timestamp() -> int:
+    return int(datetime.datetime.now().timestamp())
+
+
+# TODO typing: pathlib
+def _get_snapshot_path(suffix: str) -> str:
+    return f"{container.HELPER_BASE_PATH}/{suffix}"
 
 
 @dataclasses.dataclass
 class Snapshot:
-    uuid: str = None
-    name: str = None
-    size: int = 0
-    file_count: int = 0
-    created: int = 0
+    uuid: str = dataclasses.field(default_factory=_generate_uuid)
+    name: str = dataclasses.field(default_factory=_generate_name)
+    size: int = dataclasses.field(default=0)
+    file_count: int = dataclasses.field(default=0)
+    created: int = dataclasses.field(default_factory=_get_timestamp)
 
-    def __post_init__(self):
-        if not self.uuid:
-            self.uuid = str(uuid.uuid4())
-        if not self.created:
-            self.created = int(datetime.datetime.now().timestamp())
-        if not self.name:
-            generator = hruid.Generator(use_number=False)
-            self.name = generator.random()
+    # TODO: remove, if possible
+    def __post_init__(self) -> None:
         # NOTE: Soft "migration", will result in saved file_count
         # after first create / remove
         if not self.file_count:
             self.file_count = container.directory_filecount(self.path)
 
     @property
-    def created_when(self):
+    def created_when(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.created)
 
     @property
-    def path(self):
-        return f"{container.HELPER_BASE_PATH}/{self.uuid}"
+    def path(self) -> str:
+        return _get_snapshot_path(suffix=self.uuid)
+
+
+def _create_snapshot(**kwargs: object) -> Snapshot:
+    _kwargs = {k: v for k, v in kwargs.items() if v}
+    return Snapshot(**_kwargs)  # type: ignore[arg-type]
 
 
 # Could be made lazy-loaded
-def load_database():
+def load_database() -> t.MutableSequence[Snapshot]:
     json_string = container.file_read("db.json")
     if not json_string:
         return []
 
-    return list(
-        map(lambda snapshot_data: Snapshot(**snapshot_data), json.loads(json_string))
-    )
+    def _transform(data: object) -> Snapshot:
+        if not isinstance(data, dict):
+            raise RuntimeError("expected dict from json")
+        return _create_snapshot(**data)
+
+    return list(map(_transform, json.loads(json_string)))
 
 
-def save_database(snapshot_list):
-    json_string = json.dumps(
-        list(map(lambda snapshot: dataclasses.asdict(snapshot), snapshot_list))
-    )
+def save_database(snapshot_list: t.Sequence[Snapshot]) -> None:
+    json_string = json.dumps(list(map(dataclasses.asdict, snapshot_list)))
     container.file_write("db.json", json_string)
 
 
-def snapshot_list():
+def snapshot_list() -> t.Sequence[Snapshot]:
     snapshots = load_database()
     return snapshots
 
 
-def snapshot_create(name):
+def snapshot_create(name: t.Optional[str]) -> Snapshot:
     snapshots = load_database()
 
-    existing_snapshots = list(filter(lambda s: s.name == name, snapshots))
-    if len(existing_snapshots) > 0:
+    def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
+        return snapshot.name == name
+
+    if any(filter(_name_equals, snapshots)):
         raise Exception("A snapshot with that name already exists")
 
-    # Dummy file_count for the command to only run once
-    snapshot = Snapshot(name=name, file_count=123)
+    _uuid = _generate_uuid()
+    _path = _get_snapshot_path(suffix=_uuid)
 
     with container.freeze_target_container():
-        container.sync(settings.get("directory"), snapshot.path)
+        container.sync(settings.get("directory"), _path)
 
-    snapshot.size = container.directory_size(snapshot.path)
-    snapshot.file_count = container.directory_filecount(snapshot.path)
+    _name = name or _generate_name()
+    _size = container.directory_size(_path)
+    _file_count = container.directory_filecount(_path)
+
+    snapshot = Snapshot(
+        uuid=_uuid,
+        name=_name,
+        size=_size,
+        file_count=_file_count,
+    )
 
     snapshots.append(snapshot)
     save_database(snapshots)
     return snapshot
 
 
-def snapshot_delete(name):
+def snapshot_delete(name: str) -> None:
     snapshots_before = load_database()
 
-    existing_snapshots = list(filter(lambda s: s.name == name, snapshots_before))
+    def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
+        return snapshot.name == name
+
+    existing_snapshots = tuple(filter(_name_equals, snapshots_before))
     if len(existing_snapshots) > 1:
         raise Exception("This shouldn't happen - 2 snapshots with the same name")
 
-    if len(existing_snapshots) < 1:
+    if not existing_snapshots:
         raise Exception("No snapshot found")
 
     snapshot = existing_snapshots[0]
 
-    snapshots_after = list(filter(lambda s: s.name != name, snapshots_before))
+    snapshots_after = tuple(itertools.filterfalse(_name_equals, snapshots_before))
 
     container.directory_remove(snapshot.path)
 
     save_database(snapshots_after)
 
 
-def snapshot_restore(name):
+def snapshot_restore(name: str) -> None:
     snapshots_before = load_database()
 
-    existing_snapshots = list(filter(lambda s: s.name == name, snapshots_before))
+    def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
+        return snapshot.name == name
+
+    existing_snapshots = tuple(filter(_name_equals, snapshots_before))
     if len(existing_snapshots) > 1:
         raise Exception("This shouldn't happen - 2 snapshots with the same name")
 
-    if len(existing_snapshots) < 1:
+    if not existing_snapshots:
         raise Exception("No snapshot found")
 
     snapshot = existing_snapshots[0]
@@ -115,7 +150,7 @@ def snapshot_restore(name):
         container.sync(snapshot.path, settings.get("directory"))
 
 
-def snapshot_present_stats():
+def snapshot_present_stats() -> Snapshot:
     path = settings.get("directory")
     return Snapshot(
         file_count=container.directory_filecount(path),
