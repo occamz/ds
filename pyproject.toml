@@ -47,6 +47,11 @@ ds = "docker_snapshot:execute_cli"
 [tool.hatch.version]
 path = "src/docker_snapshot/__about__.py"
 
+# NOTE: Workaround for missing PyCharm support
+#       See: https://youtrack.jetbrains.com/issue/PY-60410/Support-Hatch-Pythons-standard-project-manager-from-PyPA
+[tool.hatch.envs.default]
+type = "virtual"
+path = ".venv"
 
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
