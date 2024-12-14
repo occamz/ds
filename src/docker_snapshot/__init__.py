@@ -175,8 +175,8 @@ def prune() -> None:
         error(e)
 
 
-@snapshots.command()
-def init():
+@snapshots.command
+def init() -> None:
     try:
         settings.init()
         click.echo(click.style("Created `ds.yaml`", fg="green"))
