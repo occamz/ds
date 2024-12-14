@@ -1,5 +1,6 @@
 import functools
 import typing as t
+import click
 from docker_snapshot import settings
 
 
@@ -24,3 +25,6 @@ def find_root_settings(f: "_Func[P, R]") -> "_Wrapper[P, R]":
         return f(_settings, ctx, *args, **kwargs)
 
     return inner
+
+
+pass_settings = click.make_pass_decorator(settings.Settings)
