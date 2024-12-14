@@ -15,9 +15,9 @@ if t.TYPE_CHECKING:
     ]
 
     class SettingsKwargs(t.TypedDict):
-        container_name: str
-        directory: str
-        namespace: str
+        container_name: t.Optional[str]
+        directory: t.Optional[str]
+        namespace: t.Optional[str]
 
 
 DEFAULT_PATH: t.Final[pathlib.Path] = pathlib.Path("ds.yaml")

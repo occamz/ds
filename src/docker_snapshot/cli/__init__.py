@@ -1,14 +1,16 @@
+from __future__ import annotations
 import typing as t
 import click
 from click_aliases import ClickAliasedGroup
 from rich.console import Console
 from rich.table import Table
 from docker_snapshot import container, settings, snapshot, utils
+from docker_snapshot.cli.decorators import find_root_settings, pass_settings
 
 
 if t.TYPE_CHECKING:
     from typing_extensions import Unpack
-    from docker_snapshot.settings import SettingsKwargs
+    from docker_snapshot.settings import Settings, SettingsKwargs
 
 
 """
@@ -23,12 +25,17 @@ def error(message: t.Union[str, BaseException]) -> None:
     click.echo(click.style(str(message), fg="red"), err=True)
 
 
+@find_root_settings
 @container.requires_helper_container
 def get_names(
+    settings: Settings,
     ctx: click.Context,
-    args: object,
-    incomplete: t.Union[str, t.Tuple[str, ...]],
+    args: click.Argument,
+    incomplete: str,
 ) -> t.Sequence[str]:
+    # TODO: remove, only here for testing
+    assert settings
+
     def _get_name(snapshot: snapshot.Snapshot) -> str:
         return snapshot.name
 
@@ -50,8 +57,9 @@ def snapshots(ctx: click.Context, **kwargs: "Unpack[SettingsKwargs]") -> None:
 
 
 @snapshots.command
+@pass_settings
 @container.requires_helper_container
-def ls() -> None:
+def ls(settings: Settings) -> None:
     snapshot_list = snapshot.snapshot_list()
 
     if not len(snapshot_list):
@@ -76,7 +84,7 @@ def ls() -> None:
         )
 
     # Show the present stats
-    present = snapshot.snapshot_present_stats()
+    present = snapshot.snapshot_present_stats(path=settings.directory)
     table.add_row(
         "present",
         "",
@@ -91,25 +99,31 @@ def ls() -> None:
 
 @snapshots.command
 @click.argument("name", default="")
+@pass_settings
 @container.requires_helper_container
-def create(name: str) -> None:
-    if not container.is_target_container_running():
-        error(f"Target container `{settings.get('container_name')}` is not running.")
+def create(settings: Settings, name: str) -> None:
+    if not container.is_target_container_running(name=settings.container_name):
+        error(f"Target container `{settings.container_name}` is not running.")
         return
 
     _name = name if name else None
-    try:
-        s = snapshot.snapshot_create(_name)
-        click.echo(click.style(f"Created `{s.name}`", fg="green"))
-    except Exception as e:
-        error(e)
+    s = snapshot.snapshot_create(
+        name=_name,
+        source=settings.directory,
+        container_name=settings.container_name,
+    )
+    click.echo(click.style(f"Created `{s.name}`", fg="green"))
+    # try:
+    # except Exception as e:
+    #     error(e)
 
 
 # NOTE: somehow mypy sees this as untyped :shrug:
 @snapshots.command(aliases=["d", "rm"])  # type: ignore[misc]
 @click.argument("name", type=click.STRING, shell_complete=get_names)
+@pass_settings
 @container.requires_helper_container
-def delete(name: str) -> None:
+def delete(_: Settings, name: str) -> None:
     try:
         snapshot.snapshot_delete(name)
         click.echo(click.style(f"Deleted `{name}`", fg="red"))
@@ -119,10 +133,11 @@ def delete(name: str) -> None:
 
 @snapshots.command
 @click.argument("name", default="", type=click.STRING, shell_complete=get_names)
+@pass_settings
 @container.requires_helper_container
-def restore(name: str) -> None:
-    if not container.is_target_container_running():
-        error(f"Target container `{settings.get('container_name')}` is not running.")
+def restore(settings: Settings, name: str) -> None:
+    if not container.is_target_container_running(name=settings.container_name):
+        error(f"Target container `{settings.container_name}` is not running.")
         return
 
     # Restore latest if no name is given
@@ -139,7 +154,11 @@ def restore(name: str) -> None:
         click.echo(click.style(f"Restoring `{name}`", fg="green"))
 
     try:
-        snapshot.snapshot_restore(name)
+        snapshot.snapshot_restore(
+            name=name,
+            destination=settings.directory,
+            container_name=settings.container_name,
+        )
         click.echo(click.style(f"Restored `{name}`", fg="green"))
     except Exception as e:
         error(e)
@@ -147,10 +166,8 @@ def restore(name: str) -> None:
 
 @snapshots.command
 @container.requires_helper_container
-def prune() -> None:
-    _snapshots = snapshot.snapshot_list()
-
-    if not _snapshots:
+def prune(_: Settings) -> None:
+    if not (_snapshots := snapshot.snapshot_list()):
         return click.echo(click.style("Nothing to prune", fg="yellow"))
 
     _n = len(_snapshots)
