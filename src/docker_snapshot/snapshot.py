@@ -5,7 +5,7 @@ import json
 import typing as t
 import uuid
 import hruid  # type: ignore[import-untyped]
-from docker_snapshot import container, settings
+from docker_snapshot import container
 
 
 def _generate_uuid() -> str:
@@ -71,7 +71,11 @@ def snapshot_list() -> t.Sequence[Snapshot]:
     return snapshots
 
 
-def snapshot_create(name: t.Optional[str]) -> Snapshot:
+def snapshot_create(
+    name: t.Optional[str],
+    source: str,
+    container_name: str,
+) -> Snapshot:
     snapshots = load_database()
 
     def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
@@ -83,8 +87,8 @@ def snapshot_create(name: t.Optional[str]) -> Snapshot:
     _uuid = _generate_uuid()
     _path = _get_snapshot_path(suffix=_uuid)
 
-    with container.freeze_target_container():
-        container.sync(settings.get("directory"), _path)
+    with container.freeze_target_container(name=container_name):
+        container.sync(source_directory=source, destination_path=_path)
 
     _name = name or _generate_name()
     _size = container.directory_size(_path)
@@ -124,7 +128,7 @@ def snapshot_delete(name: str) -> None:
     save_database(snapshots_after)
 
 
-def snapshot_restore(name: str) -> None:
+def snapshot_restore(name: str, destination: str, container_name: str) -> None:
     snapshots_before = load_database()
 
     def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
@@ -139,13 +143,12 @@ def snapshot_restore(name: str) -> None:
 
     snapshot = existing_snapshots[0]
 
-    with container.freeze_target_container():
-        container.sync(snapshot.path, settings.get("directory"))
+    with container.freeze_target_container(name=container_name):
+        container.sync(source_directory=snapshot.path, destination_path=destination)
 
 
-def snapshot_present_stats() -> Snapshot:
-    path = settings.get("directory")
+def snapshot_present_stats(path: str) -> Snapshot:
     return Snapshot(
-        file_count=container.directory_filecount(path),
-        size=container.directory_size(path),
+        file_count=container.directory_filecount(path=path),
+        size=container.directory_size(path=path),
     )
