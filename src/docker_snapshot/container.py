@@ -4,34 +4,31 @@ import re
 import shlex
 import typing as t
 from functools import wraps
+from types import TracebackType
 import click
 import docker
 from docker import errors
+from docker.client import DockerClient
+from docker.models.containers import Container
+from docker.models.images import Image
+from docker.models.volumes import Volume
 from rich.progress import Progress
 from docker_snapshot import images, settings
 
 
-if t.TYPE_CHECKING:
-    from types import TracebackType
-    from docker.client import DockerClient
-    from docker.models.containers import Container
-    from docker.models.images import Image
-    from docker.models.volumes import Volume
-    from typing_extensions import ParamSpec
-
-    P = ParamSpec("P")
-    R = t.TypeVar("R")
+P = t.ParamSpec("P")
+R = t.TypeVar("R")
 
 
 HELPER_BASE_PATH = "/mnt/ds"
 
-client: "DockerClient" = docker.from_env()
-container: t.Optional["Container"] = None
+client: DockerClient = docker.from_env()
+container: t.Optional[Container] = None
 
 
-def requires_helper_container(f: t.Callable["P", "R"]) -> t.Callable["P", "R"]:
+def requires_helper_container(f: t.Callable[P, R]) -> t.Callable[P, R]:
     @wraps(f)
-    def wrapper(*args: "P.args", **kwargs: "P.kwargs") -> "R":
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         alloc()
         res = f(*args, **kwargs)
         dealloc()
@@ -51,7 +48,7 @@ class freeze_target_container(object):
         self,
         exception_type: t.Optional[t.Type[BaseException]],
         exception: t.Optional[BaseException],
-        traceback: t.Optional["TracebackType"],
+        traceback: t.Optional[TracebackType],
     ) -> None:
         start(settings.get("container_name"))
 
@@ -75,21 +72,21 @@ def get_container_id() -> str:
     return f"ds-{namespace}"
 
 
-def build_image() -> "Image":
+def build_image() -> Image:
     dockerfile = io.BytesIO(pkg_resources.read_text(images, "rsync").encode("utf-8"))
     image, _ = client.images.build(fileobj=dockerfile, tag=get_image_id())
     return image
 
 
-def create_volume() -> "Volume":
+def create_volume() -> Volume:
     return client.volumes.create(name=get_volume_id())
 
 
 def create_container(
-    image: t.Union[str, "Image"],
-    volume: "Volume",
+    image: t.Union[str, Image],
+    volume: Volume,
     volumes_from: str,
-) -> "Container":
+) -> Container:
     return client.containers.create(
         image,
         name=get_container_id(),

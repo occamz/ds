@@ -8,10 +8,6 @@ import hruid  # type: ignore[import-untyped]
 from docker_snapshot import container, settings
 
 
-if t.TYPE_CHECKING:
-    from typing_extensions import TypeGuard
-
-
 def _generate_uuid() -> str:
     return str(uuid.uuid4())
 
@@ -85,7 +81,7 @@ def snapshot_list() -> t.Sequence[Snapshot]:
 def snapshot_create(name: t.Optional[str]) -> Snapshot:
     snapshots = load_database()
 
-    def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
+    def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
         return snapshot.name == name
 
     if any(filter(_name_equals, snapshots)):
@@ -116,7 +112,7 @@ def snapshot_create(name: t.Optional[str]) -> Snapshot:
 def snapshot_delete(name: str) -> None:
     snapshots_before = load_database()
 
-    def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
+    def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
         return snapshot.name == name
 
     existing_snapshots = tuple(filter(_name_equals, snapshots_before))
@@ -138,7 +134,7 @@ def snapshot_delete(name: str) -> None:
 def snapshot_restore(name: str) -> None:
     snapshots_before = load_database()
 
-    def _name_equals(snapshot: Snapshot) -> "TypeGuard[Snapshot]":
+    def _name_equals(snapshot: Snapshot) -> t.TypeGuard[Snapshot]:
         return snapshot.name == name
 
     existing_snapshots = tuple(filter(_name_equals, snapshots_before))

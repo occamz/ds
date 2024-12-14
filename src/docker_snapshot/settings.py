@@ -4,13 +4,12 @@ import typing as t
 import yaml
 
 
-if t.TYPE_CHECKING:
-    # TODO: remove
-    _Attrs = t.Literal[
-        "container_name",
-        "directory",
-        "namespace",
-    ]
+# TODO: remove
+_Attrs = t.Literal[
+    "container_name",
+    "directory",
+    "namespace",
+]
 
 
 DEFAULT_FILENAME: t.Final[str] = "ds.yaml"
@@ -42,7 +41,7 @@ def init() -> None:
 
 
 # TODO: fix
-def get(attribute: "_Attrs") -> str:
+def get(attribute: _Attrs) -> str:
     global _data
     if _data:
         # HACK: temporary hack

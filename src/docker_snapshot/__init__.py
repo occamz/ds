@@ -6,10 +6,6 @@ from rich.table import Table
 from docker_snapshot import container, settings, snapshot, utils
 
 
-if t.TYPE_CHECKING:
-    from typing_extensions import TypeGuard
-
-
 """
 Configuration parameters:
 - container_name: 		postgres					kind-control-plane
@@ -31,7 +27,7 @@ def get_names(
     def _get_name(snapshot: snapshot.Snapshot) -> str:
         return snapshot.name
 
-    def _predicate(name: str) -> "TypeGuard[str]":
+    def _predicate(name: str) -> t.TypeGuard[str]:
         return name.startswith(incomplete)
 
     snapshots = snapshot.snapshot_list()
