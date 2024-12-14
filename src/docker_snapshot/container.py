@@ -1,23 +1,29 @@
+from __future__ import annotations
 import importlib.resources as pkg_resources
 import io
 import re
 import shlex
 import typing as t
 from functools import wraps
-from types import TracebackType
 import click
 import docker
 from docker import errors
-from docker.client import DockerClient
-from docker.models.containers import Container
-from docker.models.images import Image
-from docker.models.volumes import Volume
 from rich.progress import Progress
-from docker_snapshot import images, settings
+from docker_snapshot import images
 
 
-P = t.ParamSpec("P")
-R = t.TypeVar("R")
+if t.TYPE_CHECKING:
+    from types import TracebackType
+    from docker.client import DockerClient
+    from docker.models.containers import Container
+    from docker.models.images import Image
+    from docker.models.volumes import Volume
+    from docker_snapshot.settings import Settings
+
+    P = t.ParamSpec("P")
+    R = t.TypeVar("R")
+
+    F = t.Callable[t.Concatenate[Settings, P], R]
 
 
 HELPER_BASE_PATH = "/mnt/ds"
@@ -26,11 +32,11 @@ client: DockerClient = docker.from_env()
 container: t.Optional[Container] = None
 
 
-def requires_helper_container(f: t.Callable[P, R]) -> t.Callable[P, R]:
+def requires_helper_container(f: F[P, R]) -> F[P, R]:
     @wraps(f)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        alloc()
-        res = f(*args, **kwargs)
+    def wrapper(settings: Settings, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        alloc(container_name=settings.container_name, namespace=settings.namespace)
+        res = f(settings, *args, **kwargs)
         dealloc()
         return res
 
@@ -38,11 +44,11 @@ def requires_helper_container(f: t.Callable[P, R]) -> t.Callable[P, R]:
 
 
 class freeze_target_container(object):
-    def __init__(self) -> None:
-        pass
+    def __init__(self, name: str) -> None:
+        self.name = name
 
     def __enter__(self) -> None:
-        stop(settings.get("container_name"))
+        stop(self.name)
 
     def __exit__(
         self,
@@ -50,46 +56,46 @@ class freeze_target_container(object):
         exception: t.Optional[BaseException],
         traceback: t.Optional[TracebackType],
     ) -> None:
-        start(settings.get("container_name"))
+        start(self.name)
 
 
-def is_target_container_running() -> bool:
-    return is_running(settings.get("container_name"))
+def is_target_container_running(name: str) -> bool:
+    return is_running(name)
 
 
-def get_image_id() -> str:
-    namespace = settings.get("namespace")
+def get_image_id(namespace: str) -> str:
     return f"ds-{namespace}"
 
 
-def get_volume_id() -> str:
-    namespace = settings.get("namespace")
+def get_volume_id(namespace: str) -> str:
     return f"ds-{namespace}"
 
 
-def get_container_id() -> str:
-    namespace = settings.get("namespace")
+def get_container_id(namespace: str) -> str:
     return f"ds-{namespace}"
 
 
-def build_image() -> Image:
+def build_image(namespace: str) -> Image:
     dockerfile = io.BytesIO(pkg_resources.read_text(images, "rsync").encode("utf-8"))
-    image, _ = client.images.build(fileobj=dockerfile, tag=get_image_id())
+    tag = get_image_id(namespace=namespace)
+    image, _ = client.images.build(fileobj=dockerfile, tag=tag)
     return image
 
 
-def create_volume() -> Volume:
-    return client.volumes.create(name=get_volume_id())
+def create_volume(namespace: str) -> Volume:
+    name = get_volume_id(namespace=namespace)
+    return client.volumes.create(name=name)
 
 
 def create_container(
     image: t.Union[str, Image],
     volume: Volume,
     volumes_from: str,
+    namespace: str,
 ) -> Container:
     return client.containers.create(
         image,
-        name=get_container_id(),
+        name=get_container_id(namespace=namespace),
         volumes={volume.name: {"bind": HELPER_BASE_PATH, "mode": "rw"}},
         volumes_from=[volumes_from],
         working_dir=HELPER_BASE_PATH,
@@ -100,31 +106,33 @@ def create_container(
     )
 
 
-def alloc() -> None:
+def alloc(container_name: str, namespace: str) -> None:
     global container
     # Get or build image
     try:
         # NOTE: Blocks future versions of Dockerfile
-        image = client.images.get(get_image_id())
+        image = client.images.get(get_image_id(namespace=namespace))
     except errors.ImageNotFound:
-        image = build_image()
+        image = build_image(namespace=namespace)
 
     # Get or create volume
     try:
-        volume = client.volumes.get(get_volume_id())
+        volume = client.volumes.get(get_volume_id(namespace=namespace))
     except errors.NotFound:
-        volume = create_volume()
+        volume = create_volume(namespace=namespace)
 
     # Get and/or run container
     try:
-        container = client.containers.get(get_container_id())
+        container = client.containers.get(get_container_id(namespace=namespace))
     except errors.NotFound:
-        target_container_name = settings.get("container_name")
-        if not exists(target_container_name):
-            raise Exception(
-                f"Target container with name {target_container_name} not found."
-            )
-        container = create_container(image, volume, target_container_name)
+        if not exists(container_name=container_name):
+            raise Exception(f"Target container with name {container_name} not found.")
+        container = create_container(
+            image=image,
+            volume=volume,
+            volumes_from=container_name,
+            namespace=namespace,
+        )
 
     container.start()
 
@@ -135,7 +143,10 @@ def dealloc() -> None:
     if container is None:
         return
 
-    container.stop(timeout=0)
+    # NOTE: trying to stop the container breaks hanging I/O,
+    # whereas force removing it automatically ends sessions
+    # container.stop(timeout=0)
+    container.remove(force=True)
 
 
 def sh(command: str) -> str:
@@ -226,7 +237,7 @@ def sync(source_directory: str, destination_path: str) -> None:
 def stop(container_name: str) -> None:
     click.echo(f"Stopping container {container_name}...")
     try:
-        client.containers.get(container_name).stop(timeout=1)
+        client.containers.get(container_name).stop(timeout=2)
     except errors.NotFound:
         raise Exception(f"Container `{container_name}` not found")
 

@@ -40,7 +40,7 @@ Source = "https://github.com/occamz/ds"
 
 
 [project.scripts]
-ds = "docker_snapshot:execute_cli"
+ds = "docker_snapshot.cli:execute_cli"
 
 
 [tool.hatch.version]
