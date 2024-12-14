@@ -1,3 +1,4 @@
+from __future__ import annotations
 import dataclasses
 import pathlib
 import typing as t
@@ -67,7 +68,7 @@ def _override(original: Settings, replacement: "SettingsKwargs") -> Settings:
     )
 
 
-def load(**kwargs: "Unpack[SettingsKwargs]") -> Settings:
+def load(**kwargs: Unpack[SettingsKwargs]) -> Settings:
     return _override(original=_load(), replacement=kwargs)
 
 

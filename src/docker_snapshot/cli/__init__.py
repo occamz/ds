@@ -52,7 +52,7 @@ def get_names(
 @click.option("--directory", type=str)
 @click.option("--namespace", type=str)
 @click.pass_context
-def snapshots(ctx: click.Context, **kwargs: "Unpack[SettingsKwargs]") -> None:
+def snapshots(ctx: click.Context, **kwargs: Unpack[SettingsKwargs]) -> None:
     ctx.obj = settings.load(**kwargs)
 
 

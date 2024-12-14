@@ -1,3 +1,4 @@
+from __future__ import annotations
 import functools
 import typing as t
 import click
@@ -16,9 +17,9 @@ if t.TYPE_CHECKING:
     _Wrapper = t.Callable[Concatenate[Context, P], R]
 
 
-def find_root_settings(f: "_Func[P, R]") -> "_Wrapper[P, R]":
+def find_root_settings(f: _Func[P, R]) -> _Wrapper[P, R]:
     @functools.wraps(f)
-    def inner(ctx: "Context", /, *args: "P.args", **kwargs: "P.kwargs") -> "R":
+    def inner(ctx: Context, /, *args: P.args, **kwargs: P.kwargs) -> R:
         # HACK: ultrahack to avoid storing stuff in global scope
         _root_ctx = ctx.find_root()
         _settings = settings.load(**_root_ctx.params)
