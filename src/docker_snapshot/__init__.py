@@ -72,7 +72,7 @@ def ls() -> None:
         table.add_row(
             s.created_when.strftime("%Y-%m-%d %H:%M:%S"),
             f"[bold]{s.name}[/bold]",
-            utils.sizeof_fmt(s.size),
+            utils.format_size(s.size),
             s.uuid,
             str(s.file_count),
         )
@@ -82,7 +82,7 @@ def ls() -> None:
     table.add_row(
         "present",
         "",
-        utils.sizeof_fmt(present.size),
+        utils.format_size(present.size),
         "",
         str(present.file_count),
         style="green",
@@ -143,6 +143,34 @@ def restore(name: str) -> None:
     try:
         snapshot.snapshot_restore(name)
         click.echo(click.style(f"Restored `{name}`", fg="green"))
+    except Exception as e:
+        error(e)
+
+
+@snapshots.command
+@container.requires_helper_container
+def prune() -> None:
+    _snapshots = snapshot.snapshot_list()
+
+    if not _snapshots:
+        return click.echo(click.style("Nothing to prune", fg="yellow"))
+
+    _n = len(_snapshots)
+    _size = utils.format_size(sum(s.size for s in _snapshots))
+    _term = utils.pluralize(word="snapshot", n=_n, suffix="s")
+
+    if not click.prompt(f"Prune {_n} {_term} ({_size})? (y/n)", type=bool):
+        return
+
+    try:
+        for snap in _snapshots:
+            _message = f"Deleting {snap.name} ({utils.format_size(snap.size)})"
+            click.echo(click.style(_message, fg="red"))
+
+            snapshot.snapshot_delete(name=snap.name)
+
+        click.echo(click.style(f"Pruned {_n} {_term}", fg="green"))
+
     except Exception as e:
         error(e)
 

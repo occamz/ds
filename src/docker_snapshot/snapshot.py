@@ -33,13 +33,6 @@ class Snapshot:
     file_count: int = dataclasses.field(default=0)
     created: int = dataclasses.field(default_factory=_get_timestamp)
 
-    # TODO: remove, if possible
-    def __post_init__(self) -> None:
-        # NOTE: Soft "migration", will result in saved file_count
-        # after first create / remove
-        if not self.file_count:
-            self.file_count = container.directory_filecount(self.path)
-
     @property
     def created_when(self) -> datetime.datetime:
         return datetime.datetime.fromtimestamp(self.created)
